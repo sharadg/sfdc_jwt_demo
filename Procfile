@@ -1,0 +1,1 @@
+web: gunicorn -w 4 -t 600 sfdc_jwt_demo:app
