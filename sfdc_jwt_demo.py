@@ -4,7 +4,6 @@ Module to play around with sending JWT token info to Salesforce and receive an a
 
 from base64 import urlsafe_b64encode
 from datetime import datetime, timedelta
-import json
 from urllib.parse import unquote
 import requests
 from flask import (
@@ -48,6 +47,10 @@ def jwt_claim():
 
 
 def credhub_secret():
+    '''
+    Read the VCAP_SERVICES env variable & extract the "demo-certificate" value
+    :return: parsed credhub value as a dict
+    '''
     cf_env = AppEnv()
     credhub_env = cf_env.get_service(label="credhub").get_url("demo-certificate")
     credhub_env = eval(unquote(credhub_env))
@@ -56,11 +59,19 @@ def credhub_secret():
 
 
 def get_private_key():
+    '''
+    Returns Private key from Credhub reference
+    :return: private key as str
+    '''
     credhub = credhub_secret()
     return credhub["value"]["private_key"]
 
 
 def get_certificate():
+    '''
+    Returns Certificate from Credhub reference
+    :return: certificate as str
+    '''
     credhub = credhub_secret()
     return credhub["value"]["certificate"]
 
@@ -78,10 +89,10 @@ def sign_data(data):
     digest.update(data.encode())
     sign = signer.sign(digest)
 
-    # verify
-    pubkey = rsakey.publickey()
-    verifier = PKCS1_v1_5.new(pubkey)
-    print("Verification: {}".format(verifier.verify(digest, sign)))
+    # Optionally verify
+    # pubkey = rsakey.publickey()
+    # verifier = PKCS1_v1_5.new(pubkey)
+    # print("Verification: {}".format(verifier.verify(digest, sign)))
 
     return urlsafe_b64encode(sign).decode()
 
@@ -94,8 +105,6 @@ def do_auth(endpoint, data):
     '''
 
     r = requests.post(endpoint, data=data)
-    print(f"{r.headers!r}")
-    print(f"{r.text!r}")
     return r
 
 
@@ -104,24 +113,14 @@ def do_auth(endpoint, data):
 def index():
     # Keeping with JWS spec, we need to remove the padding "=" characters from base64 encoded string
     claim = jwt_claim().replace("=", "")
-    # print("JWT Claim: " + claim)
 
     # Keeping with JWS spec, we need to remove the padding "=" characters from base64 encoded string
     signed_claim = sign_data(claim).replace("=", "")
-    # print("Signed JWT Claim: " + signed_claim)
 
     target_payload = claim + "." + signed_claim
-    # print("Target payload: " + target_payload)
 
     auth_payload = {"grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer", "assertion": target_payload}
     response = do_auth(JWT_AUTH_EP, data=auth_payload)
-
-    # return render_template("index.html", claim=claim, signed_claim=signed_claim, target_payload=target_payload, response=response)
-    # return jsonify(claim=claim,
-    #                 signed_claim=signed_claim,
-    #                 target_payload=target_payload,
-    #                 response_text=response.text,
-    #                 response_headers=repr(response.headers))
 
     #  convert the text dictionary to data structure so it can be rendered as a json properly
     response_text = eval(response.text)
@@ -130,25 +129,6 @@ def index():
     return_dict = {"claim": claim, "signed_claim": signed_claim, "target_payload": target_payload,
                    "response_text": response_text, "response_headers": response_headers}
     return jsonify(return_dict)
-
-
-# @app.route("/info")
-# def env_info():
-#     dict_env = {k: v for k, v in os.environ.items()}
-#     return jsonify(dict_env)
-
-
-# @app.route("/debug")
-# def debug_jsonify():
-#     # dict = os.getenv("VCAP_SERVICES", "{}")
-#     # dict = json.loads(dict)
-#     # print(dict)
-#
-#     credhub_env = credhub_secret()
-#     # credhub_env = json.loads(credhub_env)
-#     # print(credhub_env)
-#
-#     return jsonify(credhub_env)
 
 
 @app.errorhandler(404)

@@ -6,7 +6,9 @@ More details can be found [here](https://help.salesforce.com/articleView?id=remo
 
 ## Dependencies
  - Credhub Service Broker for PCF. [Docs](https://docs.pivotal.io/credhub-service-broker/index.html)
+ ![credhub_service_broker](./images/Credhub_Service_Broker.jpg)
  - Connected App that has already been registered in your Salesforce account and is set up to authenticate using OAuth JWT Tokens
+ ![connected_app_salesforce](./images/Connected_Apps_Salesforce.jpg)
 
 ## Testing in your environment
 1. Create a Credhub Service Instance  
